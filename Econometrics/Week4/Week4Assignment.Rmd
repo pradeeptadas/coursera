@@ -1,0 +1,150 @@
+---
+title: "Week4Assignment"
+author: "Pradeepta Das"
+date: "16 November 2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("ggplot2")
+library(dplyr)
+library(gap)
+library(AER)
+library(tseries)
+file = "C:\\Users\\Gannon_chef\\Documents\\Pradeepta\\Coursera\\Econometrics\\Week4\\TestExer4_Wage-round1.txt"
+data<-read.table(file, header = TRUE, sep = ",", dec = ".")
+
+data$smsa <- as.factor(data$smsa)
+data$south <- as.factor(data$south)
+data$nearc <- as.factor(data$nearc)
+```
+
+Let's see the data
+
+```{r}
+head(data)
+```
+
+
+```{r}
+summary(data)
+```
+
+#### (a) Use OLS to estimate the parameters of the model and Give an interpretation to the estimated $\beta_2$ coefficient.
+```{r}
+data$exper_sq <- (data$exper)^2
+ols_model <- lm(logw~educ+exper+exper_sq+smsa+south, data=data)
+summary(ols_model)
+```
+
+the coefficient for education is $\beta_2$ which is +ve. This indecates that log wage is positively correlated to education. Therefore, with each additional year of schooling the wage increases by about exp(0.082), or by 1.085 or ~8.5%.
+
+
+#### (b) OLS may be inconsistent in this case as educ and exper may be endogenous. Give a reason why this may be the case. Also indicate whether the estimate in part (a) is still useful.
+
+Endogeneous means the explanatory variables are stochastic and are correlated to the residuals. These might also occue due to measurement errors. In this case the OLS doesn't properly estimate $\beta$. (as, for n -> $\inf$ the OLS estimator would converge to wrong $\beta$ / diverge!)
+
+It is possible the wage, experience and education variables to be affected by some other variable (i.e. ability, social class, family support, etc.) in a way, such as, a higher ability to lead to a higher wage, longer education and less experience (due to long education) and vice versa.
+
+In this case, these variables would be endogenous and the OLS estimates would be biased and inconsistent, therefore not useful anymore.
+
+#### (c) Give a motivation why $age$ and $age^2$ can be used as instruments for $exper$ and $exper^2$.
+ 
+Age is obviously exogenous as it cannot be influenced by the people, and it is also obviously related to experience as younger people cannot have a very long experience.
+
+So it’s a good instrument for the experience variable. And the same applies for their squared values.
+
+
+### (d) Run the first-stage regression for educ for the two-stage least squares estimation of the parameters in the model above when age, $\text{age}^2$, nearc, dadeduc, and momeduc are used as additional instruments. What do you conclude about the suitability of these instruments for schooling?
+
+
+```{r}
+data$age_sq <- data$age^2
+edu_model <- lm(formula = educ ~ age + age_sq + smsa + south + nearc + daded + momed, data = data)
+summary(edu_model)
+```
+
+
+The additional instruments (age, $\text{age}^2$, nearc, daded, and momed) are significantly correlated with the education. This is especially true about the later two (daded and momed) due to their high t-statistics, which makes perfect sense as highly educated parents are more likely to support and promote their children education as well.
+
+So, the instrument variables and the endogenous variable educ are significantly related.
+```{r}
+data$educ_f <- edu_model$fitted.values
+summary(edu_model$fitted.values)
+summary(data$educ)
+```
+
+```{r b, include=FALSE, echo=FALSE}
+with(data, plot(seq_along(educ), educ,      type='l', col='blue', main="Education values", xlab='# nbr'))
+with(data, points(seq_along(educ), educ_f, type='l', col='red'))
+legend("bottomleft", c("Dataset","Fitted"), horiz=TRUE, 
+       lty=c(1,1), lwd=c(2,2), col=c("blue","red"), bg="grey")
+```
+
+Similaly, for expr: 
+```{r}
+exper_model <- lm(formula = exper ~ age + age_sq + smsa + south + nearc + daded + momed, data = data)
+summary(exper_model)
+data$exper_f <- exper_model$fitted.values
+summary(exper_model$fitted.values)
+```
+```{r}
+exper_sq_model <- lm(formula = exper_sq ~ age + age_sq + smsa + south + nearc + daded + momed, data = data)
+summary(exper_sq_model)
+data$exper_sq_f <- exper_sq_model$fitted.values
+summary(exper_sq_model$fitted.values)
+```
+```{r}
+summary(data)
+```
+
+#### (e) Estimate the parameters of the model for log wage using two-stage least squares where you correct for the endogeneity of education and experience. Compare your result to the estimate in part (a).
+
+
+```{r}
+fit <- ivreg(formula = logw ~ educ + exper + exper_sq + smsa + south |  age + age_sq + smsa + south + nearc + daded + momed, data = data)
+
+summary(fit)
+```
+
+This can also be obtained by using the fitted variables we obtained in the last step:
+```{r}
+sls2_model <- lm(formula = logw ~ educ_f + exper_f + exper_sq_f + smsa + south, data = data)
+summary(sls2_model)
+coefs2SLS <- matrix(summary(sls2_model)$coefficients[,1])
+```
+
+
+We can see that both models look a bit similar, and that both education and experience still have a positive effect while the squared experience still has a negative effect to logw.
+
+
+The 2SLS education estimated effect size of about 10% is a bit larger than the OLS estimation of about 8.2%, while the 2SLS experience estimated effect size of about 7.3% is a bit smaller than the OLS estimation of about 8.4%. And both 2SLS and OLS estimated a (small) negative 0.2% effect size for the squared experience variable.
+
+#### (f) Perform the Sargan test for validity of the instruments. What is your conclusion?
+```{r}
+data$final_residual <- residuals(sls2_model)
+
+fres <-lm(formula = final_residual ~ smsa + south + age + age_sq + nearc + daded + momed, data = data)
+summary(fres)
+```
+R2: very low, with only 0.1% of logwage residuals explained.
+
+```{r}
+sargan.tstat = nrow(data) * summary(fres)$r.squared
+sargan.tstat
+```
+
+Critical value:
+```{r}
+qchisq(0.95, df = 8-6, lower.tail = TRUE) #8 variables and 6 instruments
+```
+
+3.55 is smaller than 5.99 we do not reject the null hypothesis. So the instruments seem to be valid. so the instruments are not related with errors of the linear model called on logwage and are not omitted variables in the model, so they qualify correctly as instruments.
+
+
+#Hausman Test: with p-value < 0.01 rejects the null hypothesis, so educ, exper and exper2 are endogenous, as expected, that is they are related to $\epsilon$, the model’s errors.
+
+

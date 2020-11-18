@@ -1,0 +1,293 @@
+---
+title: "Week3Assignment"
+author: "Pradeepta Das"
+date: "16 November 2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("ggplot2")
+library(dplyr)
+library(gap)
+library(tseries)
+file = "C:\\Users\\Gannon_chef\\Documents\\Pradeepta\\Coursera\\Econometrics\\Week3\\TestExer-3-TaylorRule-round1-txtformat-corrected.txt"
+data<-read.table(file, header = TRUE, sep = "", dec = ".")
+
+start_date <- as.Date("1960/01/01")
+dates <- seq(start_date, by= "month", length.out = 660)
+data$dates <- dates
+
+```
+
+This test exercise is of an applied nature and uses data that are available in the data file TestExer3. We consider the so-called Taylor rule for setting the (nominal) interest rate. This model describes the level of the nominal interest rate that the central bank sets as a function of equilibrium real interest rate and inflation, and considers the current level of inflation and production. The model is: 
+$$ i_t = r^* + \pi_t+0.5(\pi_t - \pi^*)+0.5g_t$$
+with $i_t$ the Federal funds target interest rate at time t, 
+$r^*$ the equilibrium real federal funds rate, 
+$\pi_t$ a measure of inflation, 
+$\pi^*$ the target inflation rate and 
+$g_t$ the output gap (how much actual output deviates from potential output).
+
+We simplify the Taylor rule in two manners. 
+
+First, we avoid determining $r^*$ and $\pi^*$ and simply add an intercept to the model to capture these two variables (and any other deviations in the means). 
+
+Second, we consider production $y_t$ rather than the output gap. 
+
+In this form the Taylor rule is
+$$ i_t = \beta_1 + \beta_2\pi_t+\beta_3y_t+\epsilon_t$$
+Monthly data are available for the USA over the period 1960 through 2014 for the following variables:
+• INTRATE: Federal funds interest rate
+
+• INFL: Inflation
+
+• PROD: Production
+
+• UNEMPL: Unemployment
+
+• COMMPRI: Commodity prices
+
+• PCE: Personal consumption expenditure
+
+• PERSINC: Personal income
+
+• HOUST: Housing starts
+
+A sneak-peek into the data:
+```{r}
+tail(data)
+```
+Visualize the interest rate evolution with time:
+```{r}
+data%>% ggplot(aes(dates,INTRATE)) + geom_line()
+```
+
+### (a) Use general-to-specific to come to a model. Start by regressing the federal funds rate on the other 7 variables and eliminate 1 variable at a time.
+
+you start with the most general model, including as many variables as are at hand. Then, check whether one or more variables can be removed from the model. This can be based on individual t-tests, or a joint F-test in case of multiple variables. In case you remove one variable at a time, the variable with the lowest absolute t-value is removed from the model. The model is estimated again without that variable, and the procedure is repeated. The procedure continues until all remaining variables are significant.
+
+So next we need to fit the model:
+```{r}
+model <- lm(INTRATE ~ INFL + PROD + UNEMPL + COMMPRI + PCE + PERSINC + HOUST, data = data)
+print(summary(model))
+
+print(paste("AIC:" ,AIC(model)," and BIC :", BIC(model)))
+```
+
+The variable with the least explanatory power, based on p-value, is Unemployment, so is necessary to eliminate it and create a second model that excludes it:
+
+```{r}
+model <- lm(INTRATE ~ INFL + PROD + COMMPRI + PCE + PERSINC + HOUST, data = data)
+print(summary(model))
+
+print(paste("AIC:" ,AIC(model)," and BIC :", BIC(model)))
+```
+
+Also Production has high p-value so we remove it for our third and final round. In fact all remaining variables has absolute t-values above 2, with p-values below 0.05 so they are significant:
+
+```{r}
+model <- lm(INTRATE ~ INFL + COMMPRI + PCE + PERSINC + HOUST, data = data)
+print(summary(model))
+
+print(paste("AIC:" ,AIC(model)," and BIC :", BIC(model)))
+```
+
+AIC, BIC values seem different (may be different scaling). So, by implementing them:
+```{r}
+s <- sqrt(deviance(model)/df.residual(model))
+k <- length(model$coefficients) - 1
+n <- nrow(data)
+AIC <- log(s^2) + 2 * k / n
+BIC <- log(s^2) + k * log(n) / n
+print(round(c(AIC, BIC), 4))
+```
+$R^2$ seems good at 63.7%.
+
+
+#### Conclusion:
+
+Variables elimination after regression, one at a time, produced the following results:
+After regression round #1: UNEMPL variable was chosen to be removed,
+After regression round #2: PROD variable was chosen to be removed,
+After regression round #3: all remaining variables were found to be significant; variables removal stops here.
+
+
+### (b) Use specific-to-general to come to a model. Start by regressing the federal funds rate on only a constant and add 1 variable at a time. Is the model the same as in (a)?
+
+Definition: The specific to general approach follows the same logic [as the general to specific approach], but starts with a very small model, sometimes even only consisting of the constant term. Variables get added one at a time, choosing the one that has the largest absolute t-statistic. This procedure is repeated until no significant variables can be added anymore.
+
+First we start with a model containing only an intercept(the mean average Interest Rate over all time periods), then, thanks to AIC y BIC we added Inflation and continuing with this process is necessary to add Personal Income, then Personal Expenditure, Housing Starts and Commodity Prices.
+
+Also as you know, Unemployment and Production get the AIC higher so are excluded.So the final model shows us:
+
+```{r}
+lm(formula = INTRATE ~ INFL + PCE + HOUST + PERSINC + COMMPRI, data = data)
+```
+
+```{r}
+s <- sqrt(deviance(model)/df.residual(model))
+k <- length(model$coefficients) - 1
+n <- nrow(data)
+AIC <- log(s^2) + 2 * k / n
+BIC <- log(s^2) + k * log(n) / n
+print(round(c(AIC, BIC), 4))
+```
+
+
+Variables inclusion (one at a time) after regressions (all possible combinations), produced the following results:
+
+After regressions set round #1 (with each candidate variable, individually): INFL variable was chosen to be included,
+
+After regressions set round #2 (with INFL and each other candidate variable combination): PERSINC variable was chosen to be included as well,
+
+After regressions set round #3 (with INFL, PERSINC and each other candidate variable combination): PCE variable was chosen to be included as well,
+
+After regressions set round #4 (with INFL, PERSINC, PCE and each other candidate variable combination): HOUST variable was chosen to be included as well,
+
+After regressions set round #5 (with INFL, PERSINC, PCE, HOUST and each other candidate variable combination): COMMPRI variable was chosen to be included as well,
+
+After regressions set round #6 (with INFL, PERSINC, PCE, HOUST, COMMPRI and each other candidate variable combination): all remaining variables (PROD and UNEMPL) were found to be insignificant; variables inclusion stops here.
+
+A final single regression round #7 with all selected variables (INFL, PERSINC, PCE, HOUST, COMMPRI) was run in order to determine the concluded reduced model parameters.
+
+#### Conclusion
+Model characteristics: $R^2$ = 0.637, AIC = 1.581, BIC = 1.615.
+
+This is the same reduced model produced with the general-to-specific process, in (a).
+
+
+### (c) Compare your model from (a) and the Taylor rule of equation (1). Consider $R^2$, AIC and BIC. Which of the models do you prefer?
+
+```{r}
+taylor <-lm(formula = INTRATE ~ INFL + PROD, data = data)
+summary(taylor)
+```
+```{r}
+s <- sqrt(deviance(taylor)/df.residual(taylor))
+k <- length(taylor$coefficients) - 1
+n <- nrow(data)
+AIC <- log(s^2) + 2 * k / n
+BIC <- log(s^2) + k * log(n) / n
+print(round(c(AIC, BIC), 4))
+```
+#### Conclusion:
+Model (a) characteristics: $R^2$ = 0.637, AIC = 1.581, BIC = 1.615.
+Model taylor characteristics: $R^2$ = 0.5747, AIC = 1.7267, BIC = 1.7403.
+
+Based on the lower AIC and BIC of the reduced model (a), it is considered better than the Taylor rule model.
+
+The reduced model (a) has also a greater $R^2$ value than the Taylor rule model, which confirms the conclusion.
+
+
+### (d) Test the Taylor rule of equation (1) using the RESET test, Chow break and forecast test (with in both tests as break date January 1980) and a Jarque-Bera test. What do you conclude?
+
+#### RESET Test
+The regression specification error test (RESET) is used to detect general function form misspecification. Although we can test for this by adding quadratics of the explanatory variables, this consumes may degrees of freedom.
+
+The RESET test adds polynomials in the OLS fitted values to include in an extended regression. The squared and cubed terms of the fitted values have proven useful in most applications.
+
+We only use the equation above to test whether the original Taylor rule equation has missed important non-linearities since the variable “fitted i" is a nonlinear function of the other explanatory variables. The null hypotheses is that the Taylor rule regression is correctly specified. A significant F-statistic would suggest some sort of functional form problem.
+
+```{r}
+library(lmtest)
+resettest(taylor)
+```
+This means that the null hypothesis is not rejected. We do not reject that the model is a linear regression model and the test shows that there are no functional form problems.
+
+The RESET test on fitted values is not significant: it does not reject the Null hypothesis that additional variables would not improve the explanatory power of the model. So, additional variables would not improve the model. 
+
+#### Chow Test
+to check structural breaks
+```{r}
+# Chow break testing
+grp <- data[data$dates < "1980-01-01", ]
+x1 <- grp[, c("INFL", "PROD")]; y1 <- data.frame( INTRATE = grp["INTRATE"] )
+data1 <- cbind(x1, y1)
+grp <- data[data$dates >= "1980-01-01", ]
+x2 <- grp[, c("INFL", "PROD")]; y2 <- data.frame( INTRATE = grp["INTRATE"] )
+#chow.test
+chow.test(y1, x1, y2, x2)
+
+data1_new <- data[,c("INFL", "PROD", "INTRATE")]
+```
+We can see that the Chow test is significant, implying a structural break in 1980.
+
+
+A series of data can often contain a structural break, due to a change in policy or sudden shock to the economy. The Chow break test uses an F-test to determine whether a single regression is more efficient than two separate regressions involving splitting the data into two sub-samples. The equation uses the residual sum of squares of the complete regression (RSS) and of two regressions using a sub-sample split at the point of a suspected structural break (RSS1 and RSS2).
+
+The Chow test basically tests whether the single regression line or the two separate regression lines fit the data best. The result of the Chow break test for the Taylor rule model where the structural break is taken in January of 1980 is:
+
+Implement chow test myself:
+```{r}
+s0 <- sum(residuals(taylor)^2)
+  
+data1 <- cbind(x1, y1)
+taylor1 <- lm(INTRATE~INFL+PROD, data1)
+s1 <- sum(residuals(taylor1)^2)
+
+data2 <- cbind(x2, y2)
+taylor2 <- lm(INTRATE~INFL+PROD, data2)
+s2 <- sum(residuals(taylor2)^2)
+
+k <- 3  ## WE ARE ONLY USING 2 X variables
+n <- length(data$INTRATE)
+
+fcrit <- qf(0.975, df1=taylor1$df, df2=taylor2$df)
+print(cat("Critical Value: ", fcrit))
+```
+```{r}
+s12 <- s1 + s2
+df2 <- n-2*k
+chow_break_test <- (s0 - s12) * df2 / (k * s12)
+print(cat("chow_break_test Value: ", chow_break_test))
+```
+P-value is 
+```{r}
+pf(chow_break_test, df1=3, df2=654, lower.tail = FALSE)
+```
+
+if chow test is > F, we reject the null hypothesis.Also, since the P-value is very small the Chow break test is significant and the null hypothesis that there are no structural breaks is rejected.
+
+#### Chow-forecast test
+The Chow forecast test is another test to check for structural breaks in the sample.
+
+```{r}
+s12 <- s1 + s2
+df2 <- length(data1$INTRATE)-k
+chow_forecast_test <- (s0 - s1) * df2 / (length(data2$INTRATE) * s1)
+print("chow_forecast_test")
+print(chow_forecast_test)
+```
+
+
+```{r}
+data_frame(val = taylor$residuals) %>% ggplot(aes(seq_along(val), val)) + geom_line()
+```
+
+We can see this in the residual plot, with a lot of variation in the residuals. The residuals are negative before the suggested break (observation 241), and mostly positive for a few years afterwards, going back in range in the 1990’s.
+
+
+#### Jarque Bera
+The Jarque-Bera test is a goodness-of-fit test that determines whether or not sample data have skewness and kurtosis that matches a normal distribution. The test statistic of the Jarque-Bera test is always a positive number and if it’s far from zero, it indicates that the sample data do not have a normal distribution.
+
+The JB test follows a Chi-Square distribution with 2 degrees of freedom.
+
+```{r}
+jarque.bera.test(taylor$residuals)
+```
+Normality test is also significant: it signals that data do not have a normal distribution, rejecting the null hypotheses of normality of the residuals.
+
+```{r}
+qqplot(data$INTRATE,predict(taylor))
+```
+
+#### Conclusion:
+
+The RESET test did not rejected the null hypothesis of correct model specification, however the Chow tests and the Jarque-Bera test rejected the null hypothesis of stability and normality of the residuals.
+
+When applying the RESET and Chow tests, it can be concluded that a linear regression is a good fit for this mode. However, when splitting the data into two sub-samples (1927-1980 and 1980-2014), the Chow tests shows that the data has a structural break and that splitting it into two sub-samples might be more informative. Moreover, the JB test shows that the residual in the model is not normally distributed.
+
+Conclusively, the Taylor rule model does NOT seem to fit the data very well.
+

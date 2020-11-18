@@ -1,0 +1,108 @@
+---
+title: "Econometrics Week1 Assignment"
+author: "Pradeepta Das"
+date: "9 November 2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("ggplot2")
+library(dplyr)
+file = "C:\\Users\\Gannon_chef\\Documents\\Pradeepta\\Coursera\\Econometrics\\Week1\\TestExer-1-sales-round1.txt"
+```
+## Questions
+This exercise considers an example of data that do not satisfy all the standard assumptions of simple regression. In the considered case, one particular observation lies far off from the others, that is, it is an outlier. This violates assumptions A3 and A4, which state that all error terms $\epsilon_{i}$ are drawn from one and the same distribution withmean zero and fixed variance $\sigma^{2}$. The dataset contains twenty weekly observations on sales and advertising of adepartment store. The question of interest lies in estimating the effect of advertising on sales. One of the weeks was special, as the store was also open in the evenings during this week, but this aspect will first be ignored in the analysis.
+
+
+#### (a) Make the scatter diagram with sales on the vertical axis and advertising on the horizontal axis. What do you expect to find if you would fit a regression line to these data?
+```{r}
+# read the data!
+data_sales<-read.table(file, header = TRUE, sep = "", dec = ".")
+data_sales
+```
+
+```{r}
+# plot the advertisement vs sales points 
+data_sales %>% ggplot(aes(Advert.,Sales))+geom_point()
+```
+
+Looks like there is one outlier which doesn't fit in the pattern. 
+
+####  (b) Estimate the coefficients a and b in the simple regression model with sales as dependent variable and advertising as explanatory factor. Also compute the standard error and t-value of b. Is b significantly different from 0?
+
+```{r}
+linear_model = lm(data_sales$Sales ~ data_sales$Advert.)
+summary(linear_model)
+```
+
+b (coefficient of Advertising) here doesn't seem to be significantly different to zero! The p-value is too high 0.488 > 0.05. This is mostly because of the large outlier that we observed. That one big large outlier holds the ability to make the linear regression model bad!!
+
+The variability in the data is also not explained by the model. Because the R-squared value is 2%. Only 2% of the variability is explained. This indicates a low explanatory power of the model.
+
+Also the F satistics is Not Significant indicating that the R squared (or the model) is not significant.
+
+#### (c) Compute the residuals and draw a histogram of these residuals. What conclusion do you draw from this histogram?
+
+```{r}
+x<-data_sales$Advert.
+predicted <- predict(linear_model, newdata=data.frame(data_sales$Advert.))
+residuals <- data_sales$Sales - predicted
+data_sales <- data_sales %>% mutate(Resids = residuals)
+data_sales %>% ggplot(aes(Resids)) + geom_histogram(bins = 30, color = "grey70", fill = "white", aes(y = ..density..)) + geom_density(linetype='dashed', color='red')
+```
+From the plot of histogram of residuals, we see a very highly right skewed distribution with majority of values lying in the range of +5 and -5 and one extreme value (outlier) which is making the distribution highly right skewed (non-normal).
+
+Also this means that the residual terms do not have a mean = 0. which violates the A3 principle. 
+Again the residual term's variances are not equal for a fixed n samples! This too violates the A4 principle. 
+Because of these two violations, we conclude that the linear model doesn't work as expected in this case!
+
+#### (d) Apparently, the regression result of part (b) is not satisfactory. Once you realize that the large residual corresponds to the week with opening hours during the evening, how would you proceed to get a more satisfactory regression model?
+
+As we know, is necessary to drop out that observation to clean the data and get a better coefficient with the minimum error.
+```{r}
+#lets find the outlier
+which.max(data_sales$Sales)
+```
+```{r}
+#The 12th obs is the outlier
+
+#outlier value in terms of sales
+data_sales$Sales[12]
+```
+
+#### (e) Delete this special week from the sample and use the remaining 19 weeks to estimate the coefficients a and b in the simple regression model with sales as dependent variable and advertising as explanatory factor. Alsocompute the standard error and t-value of b. Is b significantly different from 0?
+
+
+```{r}
+data_sales <- data_sales[-which.max(data_sales$Resids),]
+data_sales
+```
+
+```{r}
+linear_model = lm(data_sales$Sales ~ data_sales$Advert.)
+summary(linear_model)
+```
+Now we can reject the H_null: b=0, so beta is statically important. From the regression output, the slope coefficient(= 0.3750) of the model is highly significant (pvalue<0.001).Hence we reject the null hypothesis in favour of the alternate that the slope coefficient b is significantly different from 0.
+
+
+```{r}
+data_sales %>% ggplot(aes(Advert.,Sales))+geom_point() + geom_smooth(method = "lm")
+```
+
+#### (f) Discuss the differences between your findings in parts (b) and (e). Describe in words what you have learned from these results.
+
+Comparing the summary regression output results from point b & e we see that the after removing the outlier, the slope coefficient has become significant.
+
+Also from the scatter plot & the regression line, we see now a positive linear association with Multiple R-squared=0.5154 which implies that about 51% of the variation in Sales is being explained by variation in Advertsisng i.e. the explanatory power of the model has drastically improved from the original model.
+
+Also from the F satistics, we see that it has become significant as compared to the original model impying the R squared (or the model) is significant.
+
+After removal of the residual point A3 and A4 part of the restrictions also became compliant. Hence the model seem to be working better. 
+We can test that by taking the mean of the residuals: 
+
+```{r}
+resid<-residuals(linear_model)
+mean(resid)
+```
+We can see that the mean is close to zero. 

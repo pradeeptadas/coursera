@@ -1,0 +1,116 @@
+---
+title: "Week2 Assignment Econometrics"
+author: "Pradeepta Das"
+date: "11 November 2020"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+header-includes:
+- \usepackage{amsmath}
+- \usepackage{graphicx}
+- \usepackage{hyperref}
+- \usepackage[utf8]{inputenc}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("ggplot2")
+library(dplyr)
+library(data.table)
+```
+## Questions
+
+#### (a) Prove: $$E(b_{R})=\beta_{1}+P\beta_{2}$$
+
+First, it is important to express $b_R$ in terms of $\epsilon$:
+$$b_{R}=(X^{'}_{1}X_{1})^{-1}X^{'}_{1}y \\
+= (X^{'}_{1}X_{1})^{-1}X^{'}_{1}(X_{1}\beta_{1}+X_{2}\beta_{2}+\epsilon) \\
+= (X^{'}_{1}X_{1})^{-1}X^{'}_{1}X_{2}\beta_{2}+(X^{'}_{1}X_{1})^{-1}X^{'}_{1}\epsilon \\
+= \beta_{1} + P\beta_{2}+(X^{'}_{1}X_{1})^{-1}X^{'}_{1}\epsilon \\
+so, E(b_{R})= \beta_{1} + P\beta_{2}  \\ as E(\epsilon) = 0
+$$
+
+
+#### (b) Prove: $$var(b_{R})=\sigma^{2}(X^{'}_{1}X_{1})^{-1}$$
+
+First, it is important to express $b_R$ in terms of $\epsilon$:
+$$b_{R}-E(b_R)=\beta_{1} + P\beta_{2}+(X^{'}_{1}X_{1})^{-1}X^{'}_{1}\epsilon - \beta_{1} + P\beta_{2} \\
+=(X^{'}_{1}X_{1})^{-1}X^{'}_{1}\epsilon \\
+var(b_{R}) = E[((X^{'}_{1}X_{1})^{-1}X^{'}_{1}\epsilon)((X^{'}_{1}X_{1})^{-1}X^{'}_{1}\epsilon)^{'}] \\
+= E[((X^{'}_{1}X_{1})^{-1}X^{'}_{1}\epsilon)(\epsilon^{'}X_{1}(X^{'}_{1}X_{1})^{-1})^{'}] \\
+= E[((X^{'}_{1}X_{1})^{-1}X^{'}_{1}\epsilon)(\epsilon^{'}X_{1}(X^{'}_{1}X_{1})^{-1})] \\
+= E[(X^{'}_{1}X_{1})^{-1}X^{'}_{1}\epsilon\epsilon^{'}X_{1}(X^{'}_{1}X_{1})^{-1}] \\
+= (X^{'}_{1}X_{1})^{-1}X^{'}_{1}E[\epsilon\epsilon^{'}]X_{1}(X^{'}_{1}X_{1})^{-1} (X_{1} is fixed) \\
+= (X^{'}_{1}X_{1})^{-1}X^{'}_{1}E[\sigma^2I]X_{1}(X^{'}_{1}X_{1})^{-1}  \\
+= \sigma^2(X^{'}_{1}X_{1})^{-1}X^{'}_{1}X_{1}(X^{'}_{1}X_{1})^{-1}  \\
+= \sigma^2(X^{'}_{1}X_{1})^{-1} \\
+$$
+
+#### (c) Prove: $$b_{R}=b_1 + Pb_2$$
+$$
+b_{R}=(X^{'}_{1}X_{1})^{-1}X^{'}_{1}y\\
+=(X^{'}_{1}X_{1})^{-1}X^{'}_{1}(X_{1}b_{1}+X_{2}b_{2}+res) \\
+=b_1 + Pb_2+(X^{'}_{1}X_{1})^{-1}X^{'}_{1}res \\
+=b_1 + Pb_2 \\
+\text{as} X^{'}_{1}res = 0 \text{because of orthogonality}
+$$
+
+#### (d) Argue that the columns of the (2×3) matrix P are obtained by regressing each of the variables ‘Age’, ‘Educ’, and ‘Parttime’ on a constant term and the variable ‘Female’.
+
+
+
+So, $$P=(X^{'}_{1}X_{1})^{-1}X^{'}_{1}(X2)$$ is a (2×3) matrix, with columns as such:
+
+Column 1: $$(X^{'}_{1}X_{1})^{-1}X^{'}_{1}(Age) \text{the OLS formula for regressing ‘Age’ on X1.}$$
+Column 2: $$(X^{'}_{1}X_{1})^{-1}X^{'}_{1}(Educ) \text{the OLS formula for regressing ‘Educ’ on X1.}$$
+Column 3: $$(X^{'}_{1}X_{1})^{-1}X^{'}_{1}(Parttime) \text{the OLS formula for regressing ‘Parttime’ on X1.}$$
+
+
+#### (e) P  matrix value.
+
+```{r}
+file25 = "C:\\Users\\Gannon_chef\\Documents\\Pradeepta\\Coursera\\Econometrics\\TrainExer21.txt"
+new_logwage<-read.table(file25, header = TRUE, sep = "", dec = ".")
+str(new_logwage)
+```
+
+```{r}
+X1 = new_logwage['Female']
+X1['Constant']<-rep(1, length(new_logwage['Female']))
+X1 <- X1[,c(2,1)]
+X2 = new_logwage[c('Age', 'Educ', 'Parttime')]
+str(X1)
+```
+
+```{r}
+str(X2)
+```
+
+Now, value of P matrix can be computed as:
+```{r}
+x1_mat = as.matrix(sapply(X1, as.numeric))
+x2_mat = as.matrix(sapply(X2, as.numeric))
+P<-solve(t(x1_mat)%*%(x1_mat))%*%t(x1_mat)%*%x2_mat
+P
+```
+
+
+#### (f) Check the numerical validity of the result in part (c). Note: This equation will not hold exactly because the coefficients have been rounded to two or three decimals; preciser results would have been obtained for higher precision coefficients.
+
+```{r}
+model <- lm(LogWage~Female+Age+Educ+Parttime, data=new_logwage)
+summary(model)
+```
+```{r}
+b1=as.matrix(model$coeff[1:2])
+b2=as.matrix(model$coeff[3:5])
+b1+P%*%b2
+```
+Now, we should be able to replicate this value if we regress only using the Female and intercept!
+If we do that : 
+```{r}
+x1_model <- lm(LogWage~Female, data=new_logwage)
+x1_model$coeff
+```
+We can see that the values match exactly!
