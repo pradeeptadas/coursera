@@ -1,0 +1,81 @@
+---
+title: "Econometrics Coursera"
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook for Econometrics course that I am taking in coursera. 
+Use [CheatSheet](https://rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf) whereever possibe. 
+
+
+```{r include=FALSE}
+#Color Format
+colFmt = function(x,color){
+  outputFormat = knitr::opts_knit$get("rmarkdown.pandoc.to")
+  if(outputFormat == 'latex')
+    paste("\\textcolor{",color,"}{",x,"}",sep="")
+  else if(outputFormat == 'html')
+    paste("<font color='",color,"'>",x,"</font>",sep="")
+  else
+    x
+}
+```
+
+<!-- Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*.  -->
+
+### **Training Exercise 1.1**
+
+#### First read the data
+```{r}
+df<-read.table('C:\\Users\\Gannon_chef\\Downloads\\MFE\\Econometrics\\TrainExer11.txt', header=TRUE)
+```
+`r colFmt("1. Make two histograms, one of expenditures and the other of age. Make also a scatter diagram with expenditures on the vertical axis versus age on the horizontal axis.",'red')`
+
+#### Plotting the histogram of Age and Expenditure
+```{r}
+hist(df$Expenditures)
+hist(df$Age)
+```
+
+#### Scattor Plot between Age and Expenditure
+```{r}
+plot(df$Age, df$Expenditures)
+```
+
+Looks like lower age group spend a lot more and the expenditure decrease as the age increases.
+
+`r colFmt("2. In what respect do the data in this scatter diagram look different from the case of the sales and price data discussed in the lecture?",'red')` 
+scatter diagram differ in the sense that there is no clear trend of expenditure with Age. Rather we can just classify the expenditure into two categories low or high with respect to Age. 
+
+The mean of expenditures of all clients is:
+```{r}
+mean(df$Expenditures)
+```
+The mean of expenditures of clients aged less than 40 years is:
+```{r}
+mean(df[df$Age<40.0,]$Expenditures)
+```
+The mean of expenditures of clients aged more than 40 years is:
+```{r}
+mean(df[df$Age>=40.0,]$Expenditures)
+```
+
+
+what ddaily expenditure should  I predict for 50 year old and for 25 year old. 
+For 50 year old its mean of > 40 years. i.e. 95.8 
+
+For 25 years, take alinear regression for < 40 years. But here we can say it tends towards mean 106.4.
+
+------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+<!-- Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*. -->
+
+<!-- When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file). -->
+

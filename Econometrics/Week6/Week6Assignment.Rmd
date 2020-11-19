@@ -1,0 +1,264 @@
+---
+title: "Week6Assignment"
+author: "Pradeepta Das"
+date: "18 November 2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(gap)
+library(AER)
+library(tseries)
+library(ggplot2)
+library(gridExtra)
+library(forecast)
+file = "C:\\Users\\Gannon_chef\\Documents\\Pradeepta\\Coursera\\Econometrics\\Week6\\TestExer-6-CPI-round1.txt"
+data<-read.table(file, header = TRUE, sep = "", dec = ".")
+library(ggthemes)
+theme_set(theme_minimal())#(theme_minimal())
+```
+
+Let's look at the data. 
+```{r}
+head(data)
+```
+
+
+Questions
+This test exercise uses data that are available in the data file TestExer6. The question of interest is to model monthly inflation in the Euro area and to investigate whether inflation in the United States of America has predictive power for inflation in the Euro area. Monthly data on the consumer price index (CPI) for the Euro area and the USA are available from January 2000 until December 2011. The data for January 2000 until December 2010 are used for specification and estimation of models, and the data for 2011 are left out for forecast evaluation purposes.
+
+#### (a) Make time series plots of the CPI of the Euro area and the USA, and also of their logarithm log(CPI) and of the two monthly inflation series DP = $\Delta$log(CPI). What conclusions do you draw from these plots?
+
+
+```{r}
+
+g1<- ggplot(aes(x= seq_along(CPI_EUR), y= CPI_EUR), data = data)+ geom_line(color= "red")+
+  geom_line(y= data$CPI_USA, color= "blue") +
+  ylim(c(105,145))+
+  ggtitle("CPI_EUR(red) and CPI_USD(blue) Evolution")
+
+print(g1)
+
+```
+
+The two consumer price index (CPI) plots indicate that:
+
+USA and EURO prices seem to be correlated.
+
+USA prices are typically higher than EURO prices, and the difference seems to slightly increase over time.
+
+Both indexes are steadily increasing over time, with very few exceptions (i.e. year 2008).
+
+The indexes increasing trend seems to be rather logarithmic than linear.
+
+
+
+```{r}
+g2<- ggplot(aes(x= seq_along(LOGPEUR), y= LOGPEUR), data = data)+ geom_line(color= "red")+
+  geom_line(y= data$LOGPUSA, color= "blue") +
+  ylim(c(4.6,5))+
+  ggtitle("LOGPEUR(red) and LOGPUSA(blue) Evolution")
+
+print(g2)
+```
+The CPI logarithm log(CPI) plots indicate exactly the same things, and the corresponding diagram looks very much similar to the previous one.
+
+The apparently linear logarithmic increase confirms that the indexes increase over time is probably logarithmic rather than linear.
+
+
+
+```{r}
+g3<- ggplot(aes(x= seq_along(DPEUR), y= DPEUR), data = data)+ geom_line(color= "red")+
+  geom_line(y= data$DPUSA, color= "blue") +
+  ggtitle("DPEUR(red) and DPUSA(blue) Evolution")
+
+print(g3)
+```
+
+
+#### (b) Perform the Augmented Dickey-Fuller (ADF) test for the two log(CPI) series. In the ADF test equation, include a constant ($\alpha$), a deterministic trend term ($\beta_t$), three lags of DP = $\Delta$log(CPI) and, of course, the variable of interest log($CPI_{t-1}$). Report the coefficient of log($CPI_{t-1}$) and its standard error and t-value, and draw your conclusion.
+
+```{r}
+adf1 <- adf.test(data$LOGPEUR,'stationary',k=3) 
+adf1
+```
+This adf.test always includes constant term and linear trend parameter.
+
+
+```{r}
+adf1 <- adf.test(data$LOGPUSA,'stationary',k=3) 
+adf1
+```
+
+Both the series are not stationary! The ADF statistic is greater than the critical value of −3.5.
+
+
+#### (c) As the two series of log(CPI) are not cointegrated (you need not check this), we continue by modelling the monthly inflation series DPEUR=$\Delta$log(CPIEUR) for the Euro area. Determine the sample autocorrelations and the sample partial autocorrelations of this series to motivate the use of the following AR model: $$DPEUR_t = \alpha + \beta_1DPEUR_{t-6}+\beta_2DPEUR_{t-12}+\epsilon_t$$. Estimate the parameters of this model (sample Jan 2000 - Dec 2010).
+First divide the data:
+
+```{r}
+data_orig<- data.frame(data)
+data[which(data$YYYY.MM == "2010M12"), ]
+data <- data[1:132,]
+f_data <- data_orig[133:nrow(data_orig),]
+```
+
+
+#### AutoCorrelations:
+```{r}
+g1<-ggAcf(data$CPI_EUR, type="correlation")
+g2<-ggAcf(data$CPI_USA, type="correlation")
+g3<-ggAcf(data$LOGPEUR, type="correlation")
+g4<-ggAcf(data$LOGPUSA, type="correlation")
+g5<-ggAcf(data$DPEUR, type="correlation")
+g6<-ggAcf(data$DPUSA, type="correlation")
+grid.arrange(g3,g4,g5,g6)
+```
+
+#### Partial AutoCorrelations:
+```{r}
+g1<-ggAcf(data$CPI_EUR, type="partial")
+g2<-ggAcf(data$CPI_USA, type="partial")
+g3<-ggAcf(data$LOGPEUR, type="partial")
+g4<-ggAcf(data$LOGPUSA, type="partial")
+g5<-ggAcf(data$DPEUR, type="partial")
+g6<-ggAcf(data$DPUSA, type="partial")
+grid.arrange(g3,g4,g5,g6)
+```
+
+
+The lags with the largest values found from above gaps, are 6 and 12:
+
+Thus, the findings motivate using lags 6 and 12 with the AR model. And as this is not an MA model (residuals are not included), AR model could be estimated using the OLS method (instead of the MLE method).
+
+
+Estimating the AR model for lags 6 and 12 and using OLS, produces the following Autoregressive Fit Model:
+
+```{r}
+library(dynlm)
+ts_logeur <- ts(data$DPEUR, start =2)
+ar.model <- dynlm(ts_logeur ~ L(ts_logeur, 6) + L(ts_logeur, 12))
+summary(ar.model)
+```
+
+#### (d) Extend the AR model of part (c) by adding lagged values of monthly inflation in the USA at lags 1, 6, and 12. Check that the coefficient at lag 6 is not significant, and estimate the ADL model
+
+```{r}
+train <- ts.intersect(ts(data$DPEUR), ts(data$DPUSA))
+colnames(train) <- c("dpEur", "dpUsa")
+model <- dynlm(dpEur ~ L(dpEur, 6) + L(dpEur, 12) + L(dpUsa, 1) + L(dpUsa, 6) + L(dpUsa, 12), data=train)
+summary(model)
+```
+
+The coefficient $DPUSA_{t−6}$ is indeed not-significant. (value=−0.056, t−statistic=−1.024, p−value=0.308).
+
+### Simplified ADL model estimation
+
+```{r}
+adl.model <- dynlm(dpEur ~ L(dpEur, 6) + L(dpEur, 12) + L(dpUsa, 1) + L(dpUsa, 12), data=train)
+summary(adl.model)
+```
+#### (e) Use the models of parts (c) and (d) to make two series of 12 monthly inflation forecasts for 2011. At each month, you should use the data that are then available, for example, to forecast inflation for September 2011 you can use the data up to and including August 2011. However, do not re-estimate the model and use the coefficients as obtained in parts (c) and (d). For each of the two forecast series, compute the values of the root mean squared error (RMSE), mean absolute error (MAE), and the sum of the forecast errors (SUM). Finally, give your interpretation of the outcomes.
+
+### ADL Prediction 
+
+```{r}
+dpEur <- ts(f_data$DPEUR)
+dpUsa <- ts(f_data$DPUSA)
+test <- ts.intersect(dpEur, dpUsa)
+dependentvarname <- "dpEur"
+x1<- "dpUsa"
+
+Ntrain <- nrow(train)
+Ntest <- nrow(test)
+df_train <-data.frame(train)
+df_test <- data.frame(test)
+# can't rbind ts's apparently, so convert to numeric first
+df_train[,dependentvarname] <- as.numeric(df_train[,dependentvarname])
+df_test[,dependentvarname] <- NA
+df_testtraindata <- rbind( df_train, df_test )
+df_testtraindata[,dependentvarname] <- ts( as.numeric( df_testtraindata[,dependentvarname] ) )
+
+l1<-6
+l2<- 12
+l3 <- 1
+l4 <- 12
+
+# step through one by one
+for( i in 1:Ntest ) {
+  result <- sum(adl.model$coeff * cbind(1, df_testtraindata[Ntrain+i-l1, dependentvarname],
+                                  df_testtraindata[Ntrain+i-l2, dependentvarname],
+                                  df_testtraindata[Ntrain+i-l3, x1],
+                                  df_testtraindata[Ntrain+i-l4, x1]))
+  df_testtraindata[Ntrain+i,dependentvarname] <- result
+  cat("predicted i",i,"of",Ntest," :",result,"\n")
+}
+```
+
+```{r}
+dpEur <- ts(f_data$DPEUR)
+dpUsa <- ts(f_data$DPUSA)
+test <- ts.intersect(dpEur, dpUsa)
+dependentvarname <- "dpEur"
+
+Ntrain <- nrow(train)
+Ntest <- nrow(test)
+df_train <-data.frame(train)
+df_test <- data.frame(test)
+# can't rbind ts's apparently, so convert to numeric first
+df_train[,dependentvarname] <- as.numeric(df_train[,dependentvarname])
+df_test[,dependentvarname] <- NA
+ardf_testtraindata <- rbind( df_train, df_test )
+ardf_testtraindata[,dependentvarname] <- ts( as.numeric( ardf_testtraindata[,dependentvarname] ) )
+
+l1<-6
+l2<- 12
+#i=8
+# step through one by one
+for( i in 1:Ntest ) {
+  result <- sum(ar.model$coeff * cbind(1, ardf_testtraindata[Ntrain+i-l1, dependentvarname],
+                                  ardf_testtraindata[Ntrain+i-l2, dependentvarname]))
+  ardf_testtraindata[Ntrain+i,dependentvarname] <- result
+  cat("predicted i",i,"of",Ntest," :",result,"\n")
+}
+
+```
+
+
+```{r}
+df_testtraindata[130:nrow(df_testtraindata),] %>% ggplot(aes(x=seq_along(dpEur), y=dpEur,color="ADL Preiction"))+geom_line()+
+  geom_line(y= data_orig[130:nrow(data_orig),]$DPEUR, aes(color= "Original Data"))+ylim(-0.01, 0.02)+
+geom_line(y= ardf_testtraindata[130:nrow(ardf_testtraindata),]$dpEur, aes(color= "AR Prediction"))
+```
+```{r}
+RMSE = function(m, o){
+  sqrt(mean((m - o)^2))
+}
+cat("RMSE For ADL: ",RMSE(df_testtraindata[133:nrow(df_testtraindata),]$dpEur,data_orig[133:nrow(data_orig),]$DPEUR), "\n")
+cat("RMSE For AR: ",RMSE(ardf_testtraindata[133:nrow(ardf_testtraindata),]$dpEur,data_orig[133:nrow(data_orig),]$DPEUR), "\n")
+
+MAE = function(m, o){
+  mean(abs(m-o))
+}
+cat("MAE For ADL: ",MAE(df_testtraindata[133:nrow(df_testtraindata),]$dpEur,data_orig[133:nrow(data_orig),]$DPEUR), "\n")
+cat("MAE For AR: ",MAE(ardf_testtraindata[133:nrow(ardf_testtraindata),]$dpEur,data_orig[133:nrow(data_orig),]$DPEUR), "\n")
+
+SUM = function(m, o){
+  sum(abs(m - o))
+}
+cat("SUM For ADL: ",SUM(df_testtraindata[133:nrow(df_testtraindata),]$dpEur,data_orig[133:nrow(data_orig),]$DPEUR), "\n")
+cat("SUM For AR: ",SUM(ardf_testtraindata[133:nrow(ardf_testtraindata),]$dpEur,data_orig[133:nrow(data_orig),]$DPEUR), "\n")
+
+```
+
+### Conclusion:
+
+Clearly, the ADL model performed better forecasts than the AR model, as it scored less at all errors scores.
+
+
+This means that the insight used in part (d), about using the USA monthly inflation series at lags 1 and 12 in order to forecast the EURO monthly inflation, was correct.
+
