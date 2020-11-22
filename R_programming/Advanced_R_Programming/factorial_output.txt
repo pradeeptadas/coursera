@@ -1,0 +1,23 @@
+> benchmark(10)
+Coordinate system already present. Adding new coordinate system, which will replace the existing one.
+                 expr   min    lq  mean median    uq    max neval
+1   factorial_loop(n)   900  1000  1142   1100  1200   2900   100
+2 factorial_reduce(n) 35900 36550 38650  37200 38400 126900   100
+3   factorial_func(n)  3400  3500  3683   3600  3800   5800   100
+4    factorial_mem(n)   400   500   645    600   700   5200   100
+> benchmark(100)
+Coordinate system already present. Adding new coordinate system, which will replace the existing one.
+                 expr    min     lq   mean median     uq    max neval
+1   factorial_loop(n)   2700   2800   3046   3000   3100   6400   100
+2 factorial_reduce(n) 176700 179150 183643 180400 182300 323900   100
+3   factorial_func(n)  32400  33500  34632  34000  34450  76500   100
+4    factorial_mem(n)    400    600    749    700    800   4600   100
+There were 50 or more warnings (use warnings() to see the first 50)
+> benchmark(1000)
+Coordinate system already present. Adding new coordinate system, which will replace the existing one.
+                 expr     min      lq    mean  median      uq     max neval
+1   factorial_loop(n)   20300   20900   21525   21200   21800   39700   100
+2 factorial_reduce(n) 1188900 1230350 1343946 1251350 1316750 4824300   100
+3   factorial_func(n)  347200  359500  389317  368450  381850  749300   100
+4    factorial_mem(n)     400     600     985     900    1100    3900   100
+There were 50 or more warnings (use warnings() to see the first 50)
