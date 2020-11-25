@@ -1,0 +1,462 @@
+---
+title: "Week7Assignment-Final"
+author: "Pradeepta Das"
+date: "21 November 2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(gap)
+library(AER)
+library(tseries)
+library(ggplot2)
+library(gridExtra)
+library(forecast)
+file = "C:\\Users\\Gannon_chef\\Documents\\Pradeepta\\Coursera\\Econometrics\\Week7\\Case_HousePrices-round1.txt"
+data<-read.table(file, header = TRUE, sep = "", dec = ".")
+data$sell_LOG <- log(data$sell)
+data$lot_LOG  <- log(data$lot)
+library(ggthemes)
+theme_set(theme_minimal())#(theme_minimal())
+```
+Let's see some data. 
+```{r}
+head(data)
+```
+
+```{r}
+summary(data)
+```
+
+```{r}
+data %>% ggplot(aes(sell, lot, color= sty)) + geom_point()
+```
+
+
+### (a) Consider a linear model where the sale price of a house is the dependent variable and the explanatory variables are the other variables given above. Perform a test for linearity. What do you conclude based on the test result?
+
+```{r}
+modelA <- lm(sell ~ lot + bdms + fb + sty + drv + rec + ffin + ghw + ca + gar + reg, data = data)
+print(modelA.summary <- summary(modelA))
+```
+
+
+#### Linearity Test
+Its the ramsay's RESET test. 
+
+```{r}
+modelA.RESET <- resettest(modelA, power = 2, type = "fitted", data = data)
+print(modelA.RESET)
+```
+With a statistic of 26.986 and a p-value of ~0.000, the Ramsey’s RESET test suggests that the linear model is NOT correctly specified. So we reject $H_0$.
+
+
+#### Jarque-Bera (residuals normality)
+```{r}
+# Ho: The errors of the model are distributed normal
+modelA.JB <- jarque.bera.test(modelA$residuals)
+modelA.JB
+```
+With a statistic of ~247.62 and a p-value of ~0, the Jarque-Bera test suggests that the linear model residuals are NOT normally distributed, therefore the linear model is NOT correctly specified.
+
+Both Ramsey’s RESET and Jarque-Bera tests suggest that the considered linear model is NOT correctly specified.
+
+```{r}
+modelA.fitted <- fitted.values(modelA)
+
+data %>% ggplot(aes(modelA.fitted, sell)) +
+    geom_point(shape=16) +
+    geom_smooth() + ggtitle("Actual vs Fitted Value of Model A")
+```
+
+### (b) Now consider a linear model where the log of the sale price of the house is the dependent variable and the explanatory variables are as before. Perform again the test for linearity. What do you conclude now?
+```{r}
+modelB <- lm(sell_LOG ~ lot + bdms + fb + sty + drv + rec + ffin + ghw + ca + gar + reg, data = data)
+summary(modelB)
+```
+~ zero (0) coefficient of variable lot.
+
+
+```{r}
+modelB.RESET <- resettest(modelB, power = 2, type = "fitted", data = data)
+print(modelB.RESET)
+```
+
+With a statistic of ~0.27 and a p-value of ~0.6033, the Ramsey’s RESET test suggests that the second linear model might be correctly specified ($H_0$ of correct/linear specification NOT rejected, at the 5% level of significance).
+
+```{r}
+# Ho: The errors of the model are distributed normal
+modelB.JB <- jarque.bera.test(modelB$residuals)
+modelB.JB
+```
+
+
+With a statistic of ~8.443 and a p-value of ~0.0147, the Jarque-Bera test suggests that the linear model residuals are still NOT normally distributed, therefore the linear model is still NOT correctly specified, althought that the second model’s JB statistic is significantly decreased (and therefore the model significantly improved).
+
+
+#### Conclusion:
+
+Both Ramsey’s RESET and Jarque-Bera tests suggest that the second model is significantly improved than the model considered first.
+
+The Ramsey’s RESET test suggests that the second linear model might be correctly specified, while the Jarque-Bera test suggests that it is still NOT correctly specified (although significantly improved).
+
+This is also intuitively demonstrated by the second model real to fitted-values diagram shown below (looks much more like a linear relationship than before).
+
+
+```{r}
+modelB.fitted <- fitted.values(modelB)
+
+ggplot(data, aes(x=modelB.fitted, y=sell_LOG)) +
+    geom_point(shape=16) +
+    geom_smooth()
+```
+
+### (c) Continue with the linear model from question (b). Estimate a model that includes both the lot size variable and its logarithm, as well as all other explanatory variables without transformation. What is your conclusion, should we include lot size itself or its logarithm?
+
+```{r}
+# Estimating third model.
+modelC <- lm(sell_LOG ~ lot + lot_LOG + bdms + fb + sty + drv + rec + ffin + ghw + ca + gar + reg, 
+             data = data)
+print(modelC.summary <- summary(modelC))
+```
+
+
+
+Notice the ~ zero (0) coefficient of variable lot.
+
+```{r}
+# Model Ramsey's RESET testing.
+modelC.RESET <- resettest(modelC, power = 2, type = "fitted", data = data)
+print(modelC.RESET)
+```
+
+With a statistic of ~0.068 and a p-value of ~0.7948, the Ramsey’s RESET test suggests that the third linear model might be correctly specified (H0 of correct/linear specification NOT rejected, at the 5% level of significance).
+
+It also suggests that this is the best model constructed so far, as it has the lowest statistic and the highest p-value scored by all Ramsey’s RESET tests ran so far.
+
+
+```{r}
+# Model Jarque-Bera testing.
+modelC.JB <- jarque.bera.test(modelC.summary$residuals)
+print(modelC.JB)
+```
+
+With a statistic of ~9.364 and a p-value of ~0.0093, the Jarque-Bera test suggests that the linear model residuals are still NOT normally distributed; therefore the linear model is still NOT correctly specified.
+
+No further model improvement is indicated by the Jarque-Bera residuals normality test; in fact the second model’s residuals were slightly more normal than the third’s.
+
+
+#### Conclusion:
+
+Both Ramsey’s RESET and Jarque-Bera tests suggest that the third model is significantly improved than the model considered first, while the Ramsey’s RESET test suggests that it is even more improved than the model considered second.
+
+The Ramsey’s RESET test suggests that the third linear model might be correctly specified, while the Jarque-Bera test suggests that it is still NOT correctly specified.
+
+This is also intuitively demonstrated by the third model real to fitted-values diagram shown at the next page (looks about the same or more like a linear relationship than before).
+
+
+
+```{r}
+modelC.fitted <- fitted.values(modelC)
+
+ggplot(data, aes(x=modelC.fitted, y=sell_LOG)) +
+    geom_point(shape=16) +
+    geom_smooth()
+```
+
+
+
+#### Conclusion:
+
+It is concluded that it would be better to include the lot size logarithm in the model, rather than the lot size variable itself, due to the following reasons:
+
+The three models testing performed so far, see Table 4 (above): “Models linearity test results’ comparison chart”. The Ramsey’s RESET tests showed that the lot size logarithm variable significantly improves the model linearity, while the Jarque-Bera tests showed that it produces a satisfactory (so far) level of residuals normality.
+
+The (much better) lot size logarithm variable coefficient p-value (0), compared to the lot size variable itself coefficient p-value (0.359), when used together. See Table 5 (above): “Third model lot related variables’ coefficients’ comparison chart”.
+
+The fact that lot variable ended with a ~zero (0) coefficient anyway at the (improved) second and third models.
+
+#### (d) Consider now a model where the log of the sale price of the house is the dependent variable and the explanatory variables are the log transformation of lot size, with all other explanatory variables as before. We now consider interaction effects of the log lot size with the other variables. Construct these interaction variables. How many are individually significant?
+
+
+```{r}
+# Estimating fourth model.
+modelD <- lm(sell_LOG ~ lot_LOG + bdms + fb + sty + drv + rec + ffin + ghw + ca + gar + reg +
+                 lot_LOG * bdms + lot_LOG * fb + lot_LOG * sty + lot_LOG * drv + lot_LOG * rec + 
+                 lot_LOG * ffin + lot_LOG * ghw + lot_LOG * ca + lot_LOG * gar + lot_LOG * reg, 
+             data = data)
+print(modelD.summary <- summary(modelD))
+```
+
+ten (10) interaction variables introduction, between the log lot size and each one of all other variables.
+
+
+```{r}
+# Model Ramsey's RESET testing.
+modelD.RESET <- resettest(modelD, power = 2, type = "fitted", data = data)
+print(modelD.RESET)
+```
+
+
+```{r}
+# Model Jarque-Bera testing.
+modelD.JB <- jarque.bera.test(modelD.summary$residuals)
+print(modelD.JB)
+```
+
+With a statistic of ~8.203 and a p-value of ~0.0165, the Jarque-Bera test suggests that the model residuals are still NOT normally distributed; therefore the model is still NOT correctly specified.
+
+This Jarque-Bera test result, however, is the best scored so far.
+It seems that the interaction variables introduction slightly improves the (previous best) second model residuals normality.
+
+
+
+```{r}
+modelD.fitted <- fitted.values(modelD)
+
+ggplot(data, aes(x=modelD.fitted, y=sell_LOG)) +
+    geom_point(shape=16) +
+    geom_smooth()
+```
+
+Using the 5% significance level, only two (2) of the ten (10) interaction variables used are individually significant:
+
+LOG(lot)-drv
+LOG(lot)-rec
+
+
+### (e) Perform an F-test for the joint significance of the interaction effects from question (d).
+
+```{r echo=FALSE}
+cat("All Variables: \n")
+model <- lm(sell_LOG ~ lot_LOG + bdms + fb + sty + drv + rec + ffin + ghw + ca + gar + reg +
+                 lot_LOG * bdms + lot_LOG * fb + lot_LOG * sty + lot_LOG * drv + lot_LOG * rec + 
+                 lot_LOG * ffin + lot_LOG * ghw + lot_LOG * ca + lot_LOG * gar + lot_LOG * reg, 
+             data = data)
+print(summary(model))
+
+
+cat("LOG(lot)-reg variable removed: \n")
+model <- lm(sell_LOG ~ lot_LOG + bdms + fb + sty + drv + rec + ffin + ghw + ca + gar + reg +
+                 lot_LOG * bdms + lot_LOG * fb + lot_LOG * sty + lot_LOG * drv + lot_LOG * rec + 
+                 lot_LOG * ffin + lot_LOG * ghw + lot_LOG * ca + lot_LOG * gar, 
+             data = data)
+print(summary(model))
+
+cat("LOG(lot)-bdms variable removed: \n")
+model <- lm(sell_LOG ~ lot_LOG + bdms + fb + sty + drv + rec + ffin + ghw + ca + gar + reg +
+                 lot_LOG * fb + lot_LOG * sty + lot_LOG * drv + lot_LOG * rec + 
+                 lot_LOG * ffin + lot_LOG * ghw + lot_LOG * ca + lot_LOG * gar, 
+             data = data)
+print(summary(model))
+
+cat("LOG(lot)-ffin variable removed: \n")
+model <- lm(sell_LOG ~ lot_LOG + bdms + fb + sty + drv + rec + ffin + ghw + ca + gar + reg +
+                 lot_LOG * fb + lot_LOG * sty + lot_LOG * drv + lot_LOG * rec + 
+                 lot_LOG * ghw + lot_LOG * ca + lot_LOG * gar, 
+             data = data)
+print(summary(model))
+
+
+cat("LOG(lot)-ghw variable removed: \n")
+model <- lm(sell_LOG ~ lot_LOG + bdms + fb + sty + drv + rec + ffin + ghw + ca + gar + reg +
+                 lot_LOG * fb + lot_LOG * sty + lot_LOG * drv + lot_LOG * rec + 
+                 lot_LOG * ca + lot_LOG * gar, 
+             data = data)
+print(summary(model))
+
+
+cat("LOG(lot)-ca variable removed: \n")
+model <- lm(sell_LOG ~ lot_LOG + bdms + fb + sty + drv + rec + ffin + ghw + ca + gar + reg +
+                 lot_LOG * fb + lot_LOG * sty + lot_LOG * drv + lot_LOG * rec + 
+                 lot_LOG * gar, 
+             data = data)
+print(summary(model))
+
+cat("LOG(lot)-gar variable removed: \n")
+model <- lm(sell_LOG ~ lot_LOG + bdms + fb + sty + drv + rec + ffin + ghw + ca + gar + reg +
+                 lot_LOG * fb + lot_LOG * sty + lot_LOG * drv + lot_LOG * rec, 
+             data = data)
+print(summary(model))
+
+cat("LOG(lot)-fb variable removed: \n")
+model <- lm(sell_LOG ~ lot_LOG + bdms + fb + sty + drv + rec + ffin + ghw + ca + gar + reg +
+                 lot_LOG * sty + lot_LOG * drv + lot_LOG * rec, 
+             data = data)
+print(summary(model))
+
+cat("LOG(lot)-sty variable removed: \n")
+model <- lm(sell_LOG ~ lot_LOG + bdms + fb + sty + drv + rec + ffin + ghw + ca + gar + reg +
+                 lot_LOG * drv + lot_LOG * rec, 
+             data = data)
+print(summary(model))
+
+cat("LOG(lot)-drv variable removed: \n")
+model <- lm(sell_LOG ~ lot_LOG + bdms + fb + sty + drv + rec + ffin + ghw + ca + gar + reg +
+                 lot_LOG * rec, 
+             data = data)
+print(summary(model))
+```
+
+Started with the most general model, including as many variables as are at hand. Then, checked whether one or more variables can be removed from the model. This can be based on individual t-tests, or a joint F-test in case of multiple variables. In case you remove one variable at a time, the variable with the lowest absolute t-value is removed from the model. The model is estimated again without that variable, and the procedure is repeated. The procedure continues until all remaining variables are significant.
+
+Variables elimination after regression, one at a time, produced the following results:
+
+After regression round #1: LOG(lot)-reg interaction variable was chosen to be removed.
+
+After regression round #2: LOG(lot)-bdms interaction variable was chosen to be removed.
+
+After regression round #3: LOG(lot)-ffin interaction variable was chosen to be removed.
+
+After regression round #4: LOG(lot)-ghw interaction variable was chosen to be removed.
+
+After regression round #5: LOG(lot)-ca interaction variable was chosen to be removed.
+
+After regression round #6: LOG(lot)-gar interaction variable was chosen to be removed.
+
+After regression round #7: LOG(lot)-fb interaction variable was chosen to be removed.
+
+After regression round #8: LOG(lot)-sty interaction variable was chosen to be removed.
+
+After regression round #9: LOG(lot)-drv interaction variable was chosen to be removed.
+
+After regression round #10: all remaining variables were found to be significant; variables removal stops here. Conclusively, the only interaction variable found to be significant is LOG(lot)-rec.
+```{r}
+modelF <- lm(sell_LOG ~ lot_LOG + bdms + fb + sty + drv + rec + ffin + ghw + ca + gar + reg +
+                 lot_LOG * rec, 
+             data = data)
+print(modelF.summary<-summary(modelF))
+
+# Model Ramsey's RESET testing.
+modelF.RESET <- resettest(modelF, power = 2, type = "fitted", 
+                          data = data)
+print(modelF.RESET)
+
+# Model Jarque-Bera testing.
+modelF.JB <- jarque.bera.test(modelF.summary$residuals)
+print(modelF.JB)
+```
+
+#### Conclusion:
+
+With a statistic of ~10.348 and a p-value of ~0.0057, the Jarque-Bera test suggests that the model residuals are still NOT normally distributed; therefore the model is still NOT correctly specified.
+
+This Jarque-Bera test result is not the best scored so far. All the previous models (except from the first) related test had indicated an even better residuals normality.
+
+```{r}
+modelF.fitted <- fitted.values(modelF)
+
+ggplot(data, aes(x=modelF.fitted, y=sell_LOG)) +
+    geom_point(shape=16) +
+    geom_smooth()
+```
+
+### (g) One may argue that some of the explanatory variables are endogenous and that there may be omitted variables. For example, the ‘condition’ of the house in terms of how it is maintained is not a variable (and difficult to measure) but will affect the house price. It will also affect, or be reflected in, some of the other variables, such as whether the house has an air conditioning (which is mostly in newer houses). If the condition of the house is missing, will the effect of air conditioning on the (log of the) sale price be over- or underestimated? (For this question no computer calculations are required.)
+
+The effect of the air conditioning ca variable on the logarithm of the sale price LOG(sell) variable will be overestimated, because it is usually affected by the age (and therefore the condition) of houses both of which (logically) affect the house selling price positively.
+
+So, the effect of the age and condition house properties (which are not available to our models as variables) is partially included in the air conditioning ca variable. And since that effect is expected to be positive on the house sale price (and its logarithm), it will increase the effect of the air-conditioning ca variable in our models (thus, its estimated effect is overestimated).
+
+### Finally we analyze the predictive ability of the model. Consider again the model where the log of the sale price of the house is the dependent variable and the explanatory variables are the log transformation of lot size, with all other explanatory variables in their original form (and no interaction effects). Estimate the parameters of the model using the first 400 observations. Make predictions on the log of the price and calculate the MAE for the other 146 observations. How good is the predictive power of the model (relative to the variability in the log of the price)?
+
+
+```{r}
+# Separating the data sample in two groups
+data1 <- data[which(data$obs <= 400), ]
+n1 <- nrow(data1)
+print(paste("Data group#1 has", n1, "entries."))
+```
+```{r}
+summary(data1)
+```
+
+```{r}
+data2 <- data[which(data$obs > 400), ]
+n2 <- nrow(data2)
+print(paste("Data group#2 has", n2, "entries."))
+```
+
+```{r}
+summary(data2)
+```
+
+```{r}
+# Estimating third model.
+modelH <- lm(sell_LOG ~ lot_LOG + bdms + fb + sty + drv + rec + ffin + ghw + ca + gar + reg, 
+             data = data1)
+print(modelH.summary <- summary(modelH))
+
+# Model Ramsey's RESET testing.
+modelH.RESET <- resettest(modelH, power = 2, type = "fitted", 
+                          data = data1)
+print(modelH.RESET)
+
+# Model Jarque-Bera testing.
+modelH.JB <- jarque.bera.test(modelH.summary$residuals)
+print(modelH.JB)
+```
+
+With a statistic of ~0.698 and a p-value of ~0.7055, the Jarque-Bera test suggests that the model residuals are normally distributed; therefore the model is considered correctly specified.
+
+This Jarque-Bera test result is the best scored so far, and indicates a sufficient residuals normality.
+
+#### Conclusion
+Both Ramsey’s RESET and Jarque-Bera tests suggest that the seventh model is sufficiently linear and with good residuals normality.
+
+Both Ramsey’s RESET and Jarque-Bera tests suggest that the seventh model might be correctly specified.
+
+This is also intuitively demonstrated by the seventh model real to fitted-values diagram shown at the next page (looks about the same or more like a linear relationship).
+
+```{r}
+modelH.fitted <- fitted.values(modelH)
+
+ggplot(data1, aes(x=modelH.fitted, y=sell_LOG)) +
+    geom_point(shape=16) +
+    geom_smooth()
+```
+
+
+#### Model predictive ability
+The seventh model, as estimated using the first data group, produced the following LOG(sell) values on the second data group:
+
+```{r}
+fiited_value <- modelH$fitted.values
+data1$Fitted <- fiited_value
+data1%>% ggplot(aes(obs, sell_LOG)) + geom_point()+ geom_line(color="red") +
+  geom_line(y= data1$Fitted, color= "blue") +ggtitle("Fitted(Blue) vs Actual(Red) Model")
+
+
+data2$Fitted <- predict(modelH, data2)
+data2%>% ggplot(aes(obs, sell_LOG)) + geom_point()+ geom_line(color="red") +
+  geom_line(y= data2$Fitted, color= "blue") +ggtitle("Predicted Fitted(Blue) vs Actual(Red) Model")
+
+```
+
+```{r}
+sell_LOG_mean <- mean(data2$sell_LOG)
+sell_LOG_sd   <- sd(data2$sell_LOG)
+
+cat(sell_LOG_mean, sell_LOG_sd)
+```
+
+```{r}
+digits <- 3
+
+n <- nrow(data2)
+resids_SUM <- sum(abs(data2$Fitted-data2$sell_LOG))
+cat("resids_SUM: ", resids_SUM, "\n")
+
+MAE <- resids_SUM/n
+cat("MAE: ", round(MAE, digits))
+
+```
+The Mean Absolute Error (MAE) value of 0.128 is less than the dependent variable standard deviation itself, which leads to the conclusion that the model has some predictive ability.
+
+Our final model is the only one whose Jarque-Bera test does not reject the null hypothesis of normality of the residuals.
+
+Therefore it is the only model correctly specified.
+
