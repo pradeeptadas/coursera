@@ -1,11 +1,11 @@
-file = "C:\\Users\\Gannon_chef\\Documents\\Pradeepta\\Coursera\\Econometrics\\DataLecture5-1.txt"
+file = "C:\\Users\\Gannon_chef\\Documents\\Pradeepta\\GitCoursera\\coursera\\Econometrics\\Week5\\DataLecture5-1.txt"
 data<-read.table(file, header = TRUE, sep = "", dec = ".")
 head(data)
 model <- lm(Response~Price, data)
 summary(model)
 
 
-file = "C:\\Users\\Gannon_chef\\Documents\\Pradeepta\\Coursera\\Econometrics\\DataLecture5-5.txt"
+file = "C:\\Users\\Gannon_chef\\Documents\\Pradeepta\\GitCoursera\\coursera\\Econometrics\\Week5\\DataLecture5-5.txt"
 data<-read.table(file, header = TRUE, sep = "", dec = ".")
 summary(data)
 str(data)
@@ -58,7 +58,8 @@ summary(m1)
 ## when we do normal linear regression we estimate both mean and variance from the data. 
 ## in contrast, for logistic regression, mean is calculated from data and variance is derived from mean. 
 
-## so variance might be underestimated because is it calculated as 1. so in that case, we can adjust the dispersion parameter in summary command
+## so variance might be underestimated because is it calculated as 1. 
+#so in that case, we can adjust the dispersion parameter in summary command
 
 ##AIC can be used to compare onemodel to another. 
 ##fisher scoring iteration tells us how quickly glm converged on the maximum likelihood estimates for the coefficients. 
@@ -90,7 +91,9 @@ with(logistic, df.null - df.residual)
 #Finally, the p-value can be obtained using:
 with(logistic, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))
 ##The chi-square of 41.46 with 4 degrees of freedom and an associated p-value of less than 0.001 
-##tells us that our model as a whole fits significantly better than an empty model. This is sometimes called a likelihood ratio test (the deviance residual is -2*log likelihood). To see the model’s log likelihood, we type:
+##tells us that our model as a whole fits significantly better than an empty model. 
+#This is sometimes called a likelihood ratio test (the deviance residual is -2*log likelihood). 
+#To see the model’s log likelihood, we type:
 qchisq(0.975, df=4)  
 logLik(logistic)
 
@@ -106,6 +109,7 @@ roc(response~logistic$fitted.values, data = data, plot = TRUE, main = "ROC CURVE
 #2.5 times higher for active customer
 library(stargazer)
 stargazer(logistic, type="html", title="Results", header = FALSE)
+
 #################################
 #doesnt work - plot!
 #################################
@@ -127,6 +131,6 @@ ggplot(data=predicted.data, aes(x=rank, y=probability.of.hd)) +
 
 ####
 model <- glm(response~male+activity+age+I((age/10)^2)+I(male*age)+I(male*(age/10)^2),
-             data=Data55, family = "binomial")
+             data=data, family = "binomial")
 stargazer(model, type="html", title="Results", header = FALSE)
 
